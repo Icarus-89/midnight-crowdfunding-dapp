@@ -1,20 +1,22 @@
-// This file is part of midnightntwrk/example-bboard.
-// Copyright (C) Midnight Foundation
-// SPDX-License-Identifier: Apache-2.0
-// Licensed under the Apache License, Version 2.0 (the "License");
-// You may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 import React from 'react';
-import { AppBar, Box, Button, Chip, Stack, Typography } from '@mui/material';
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  Box,
+  Chip,
+  IconButton,
+  Tooltip,
+  Stack,
+  useTheme,
+  alpha,
+} from '@mui/material';
+import DarkModeIcon from '@mui/icons-material/DarkModeOutlined';
+import LightModeIcon from '@mui/icons-material/LightModeOutlined';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWalletRounded';
+import CheckCircleIcon from '@mui/icons-material/CheckCircleRounded';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 type WalletState = {
   connected: boolean;
@@ -27,102 +29,131 @@ type WalletState = {
 type HeaderProps = {
   wallet: WalletState;
   onConnectWallet: () => void;
+  onToggleSidebar?: () => void;
+  darkMode?: boolean;
+  onToggleTheme?: () => void;
 };
 
-export const Header: React.FC<HeaderProps> = ({ wallet, onConnectWallet }) => {
-  const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+export const Header: React.FC<HeaderProps> = ({
+  wallet,
+  onConnectWallet,
+  darkMode = true,
+  onToggleTheme,
+}) => {
+  const theme = useTheme();
 
   return (
     <AppBar
       position="sticky"
       data-testid="header"
+      elevation={0}
       sx={{
-        background: 'rgba(58,45,31,0.92)',
-        backdropFilter: 'blur(16px)',
-        borderBottom: '1px solid rgba(214,194,162,0.16)',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        px: { xs: 2, md: 6, lg: 10 },
-        py: 1,
+        backgroundColor: alpha(theme.palette.background.default, 0.75),
+        backdropFilter: 'blur(20px)',
+        borderBottom: `1px solid ${theme.palette.divider}`,
+        color: theme.palette.text.primary,
+        zIndex: (theme) => theme.zIndex.drawer + 1,
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }} data-testid="header-logo">
+      <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, md: 5 }, py: 1 }}>
+        {/* Brand Logo & Title */}
         <Box
-          sx={{
-            width: 46,
-            height: 46,
-            borderRadius: '16px',
-            background: 'linear-gradient(135deg, #6b7f4f 0%, #c59d67 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-            boxShadow: '0 8px 18px rgba(78,61,38,0.22)',
-          }}
+          sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer' }}
+          data-testid="header-logo"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         >
           <Box
             sx={{
-              width: 22,
-              height: 22,
-              borderRadius: '50%',
-              border: '2.4px solid #fff8eb',
-              position: 'relative',
+              width: 38,
+              height: 38,
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #6366F1 0%, #0EA5E9 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#ffffff',
+              boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)',
             }}
           >
-            <Box
-              sx={{
-                width: 10,
-                height: 10,
-                borderRadius: '50%',
-                background: '#fff8eb',
-                position: 'absolute',
-                top: -1,
-                left: 5,
-              }}
-            />
+            <AutoAwesomeIcon sx={{ fontSize: 20 }} />
           </Box>
-          <Box
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 800, color: theme.palette.text.primary, lineHeight: 1.1, fontSize: '1.05rem', letterSpacing: '-0.02em' }}>
+                Aura
+              </Typography>
+              <Chip
+                label="ZK State"
+                size="small"
+                sx={{
+                  height: 18,
+                  fontSize: '0.65rem',
+                  fontWeight: 800,
+                  backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                  color: theme.palette.primary.light,
+                  border: `1px solid ${alpha(theme.palette.primary.main, 0.25)}`,
+                }}
+              />
+            </Box>
+            <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 600, fontSize: '0.72rem' }}>
+              Midnight Network • Preprod
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* Right Section: Navigation Links & Actions */}
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+          {onToggleTheme && (
+            <Tooltip title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
+              <IconButton
+                onClick={onToggleTheme}
+                sx={{
+                  color: theme.palette.text.primary,
+                  backgroundColor: alpha(theme.palette.text.primary, 0.05),
+                  border: `1px solid ${theme.palette.divider}`,
+                  '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.1) },
+                }}
+              >
+                {darkMode ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
+              </IconButton>
+            </Tooltip>
+          )}
+
+          <Chip
+            icon={wallet.connected ? <CheckCircleIcon sx={{ fontSize: 16 }} /> : <AccountBalanceWalletIcon sx={{ fontSize: 16 }} />}
+            label={wallet.connected ? wallet.status : '1AM ready'}
+            color={wallet.connected ? 'success' : 'default'}
+            variant="outlined"
             sx={{
-              position: 'absolute',
-              bottom: 7,
-              right: 8,
-              width: 12,
-              height: 12,
-              borderRadius: '2px',
-              background: '#fff8eb',
-              transform: 'rotate(45deg)',
+              fontWeight: 700,
+              borderRadius: '999px',
+              display: { xs: 'none', sm: 'inline-flex' },
+              borderColor: theme.palette.divider,
             }}
           />
-        </Box>
-        <Stack spacing={0.2}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-            CrowdRise
-          </Typography>
-          <Typography variant="caption" sx={{ color: 'rgba(247, 231, 204, 0.82)' }}>
-            Funding the future together
-          </Typography>
+
+          <Button
+            variant="contained"
+            color="primary"
+            sx={{
+              textTransform: 'none',
+              borderRadius: '999px',
+              px: 3,
+              py: 0.9,
+              fontWeight: 700,
+              fontSize: '0.88rem',
+              background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
+              boxShadow: '0 4px 16px rgba(99, 102, 241, 0.35)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #4F46E5 0%, #4338CA 100%)',
+              },
+            }}
+            onClick={onConnectWallet}
+          >
+            {wallet.connected ? '1AM Connected' : 'Connect 1AM'}
+          </Button>
         </Stack>
-      </Box>
-      <Stack direction="row" spacing={1.5} sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center' }}>
-        <Button color="inherit" sx={{ textTransform: 'none' }} onClick={() => scrollTo('campaigns')}>
-          Discover
-        </Button>
-        <Button color="inherit" sx={{ textTransform: 'none' }} onClick={() => scrollTo('launch')}>
-          Launch
-        </Button>
-        <Chip
-          label={wallet.connected ? wallet.status : '1AM wallet ready'}
-          color={wallet.connected ? 'success' : 'default'}
-          variant="outlined"
-          sx={{ borderColor: '#c4a987', color: '#fff8eb' }}
-        />
-        <Button variant="contained" sx={{ textTransform: 'none', borderRadius: 999 }} onClick={onConnectWallet}>
-          {wallet.connected ? '1AM connected' : 'Connect 1AM'}
-        </Button>
-      </Stack>
+      </Toolbar>
     </AppBar>
   );
 };

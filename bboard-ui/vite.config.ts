@@ -33,13 +33,13 @@ export default defineConfig({
         },
       },
       },
-    commonjsOptions: {
       // Transform CommonJS to ESM more aggressively
-      transformMixedEsModules: true,
-      extensions: ['.js', '.cjs'],
-      // Needed for Node.js modules
-      ignoreDynamicRequires: true,
-    },
+      commonjsOptions: {
+        transformMixedEsModules: true,
+        extensions: ['.js', '.cjs'],
+        // Needed for Node.js modules
+        ignoreDynamicRequires: true,
+      },
   },
   plugins: [
     react(),
@@ -71,26 +71,15 @@ export default defineConfig({
       },
     },
   ],
-  optimizeDeps: {
-    rolldownOptions: {
-      target: 'esnext',
-      supported: { 'top-level-await': true },
-      // Configure ESBuild to handle Node.js-style modules
-      platform: 'browser',
-      format: 'esm',
-      loader: {
-        '.wasm': 'binary',
-      },
+    // Minimal dependency optimization configuration
+    optimizeDeps: {
+      include: ['@midnight-ntwrk/compact-runtime'],
+      exclude: [
+        '@midnight-ntwrk/onchain-runtime-v3',
+        '@midnight-ntwrk/onchain-runtime-v3/midnight_onchain_runtime_wasm_bg.wasm',
+        '@midnight-ntwrk/onchain-runtime-v3/midnight_onchain_runtime_wasm.js',
+      ],
     },
-    // Explicitly include these packages for pre-bundling, but force ESM
-    include: ['@midnight-ntwrk/compact-runtime'],
-    // Exclude WASM files and modules with top-level await from optimization
-    exclude: [
-      '@midnight-ntwrk/onchain-runtime-v3',
-      '@midnight-ntwrk/onchain-runtime-v3/midnight_onchain_runtime_wasm_bg.wasm',
-      '@midnight-ntwrk/onchain-runtime-v3/midnight_onchain_runtime_wasm.js',
-    ],
-  },
   define: {},
   checks: {
     importIsUndefined: false,

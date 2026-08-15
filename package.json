@@ -65,4 +65,9 @@
   "resolutions": {
     "@midnight-ntwrk/wallet-sdk": "1.2.0"
   }
+  ,
+  "scripts": {
+    "regenerate-contract": "npm run -w contract regenerate && cp -r contract/src/managed/bboard/keys bboard-ui/public/keys && cp -r contract/src/managed/bboard/zkir bboard-ui/public/zkir",
+    "ci": "npm run -w contract ci && npm run -w bboard-ui ci && npm run -w api ci && npm run -w bboard-cli ci"
+  }
 }

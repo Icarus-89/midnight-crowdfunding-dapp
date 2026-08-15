@@ -1,18 +1,31 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  Alert,
   Box,
+  Typography,
+  Grid,
+  Paper,
   Button,
+  TextField,
+  Chip,
+  Stack,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  InputAdornment,
+  IconButton,
+  useTheme,
+  alpha,
   Card,
   CardContent,
-  Chip,
-  Container,
-  LinearProgress,
-  Paper,
-  Stack,
-  TextField,
-  Typography,
 } from '@mui/material';
+import ShieldMoonIcon from '@mui/icons-material/ShieldMoonRounded';
+import RocketLaunchIcon from '@mui/icons-material/RocketLaunchRounded';
+import CloseIcon from '@mui/icons-material/CloseRounded';
+import BoltIcon from '@mui/icons-material/BoltRounded';
+import LockIcon from '@mui/icons-material/LockOutlined';
+
+import { Board } from './Board';
 
 type WalletState = {
   connected: boolean;
@@ -22,364 +35,361 @@ type WalletState = {
   status: string;
 };
 
-type Campaign = {
-  id: string;
-  title: string;
-  creator: string;
-  description: string;
-  raised: number;
-  goal: number;
-  backers: number;
-  category: string;
-  accent: string;
-};
-
 type CrowdfundingExperienceProps = {
   wallet: WalletState;
   onConnectWallet: () => void;
 };
 
-const initialCampaigns: Campaign[] = [
+type Campaign = {
+  id: string;
+  title: string;
+  creator: string;
+  goal: number;
+  raised: number;
+  backers: number;
+  category: string;
+  description: string;
+  tags: string[];
+};
+
+const INITIAL_CAMPAIGNS: Campaign[] = [
   {
-    id: 'aurora-labs',
-    title: 'Aurora Labs',
-    creator: 'Nia Chen',
-    description: 'A programmable climate sensor network for coastal communities.',
-    raised: 184000,
-    goal: 250000,
-    backers: 921,
-    category: 'Climate',
-    accent: 'linear-gradient(135deg, #4d6a4d 0%, #7c8f5d 100%)',
+    id: '1',
+    title: 'Zero-Knowledge Privacy Core',
+    creator: 'Midnight Lab',
+    goal: 5000,
+    raised: 3450,
+    backers: 42,
+    category: 'Infrastructure',
+    description: 'Decentralized private state proving framework with client-side Zero-Knowledge proofs.',
+    tags: ['ZK', 'Privacy', 'Smart Contracts'],
   },
   {
-    id: 'pixel-grove',
-    title: 'Pixel Grove',
-    creator: 'Marcus Reed',
-    description: 'A co-op creator platform where fans own the next hit game.',
-    raised: 128500,
-    goal: 180000,
-    backers: 688,
-    category: 'Gaming',
-    accent: 'linear-gradient(135deg, #8b5e3c 0%, #b98a5f 100%)',
-  },
-  {
-    id: 'pulse-care',
-    title: 'Pulse Care',
-    creator: 'Dr. Lina Ortiz',
-    description: 'Portable diagnostics that bring instant care to underserved regions.',
-    raised: 96200,
-    goal: 140000,
-    backers: 512,
-    category: 'Health',
-    accent: 'linear-gradient(135deg, #7a5e45 0%, #c6a86b 100%)',
+    id: '2',
+    title: 'VeriTrust Micro-Grants',
+    creator: 'VeriDAO',
+    goal: 10000,
+    raised: 8200,
+    backers: 118,
+    category: 'Grants',
+    description: 'Shielded micro-funding protocol for open source privacy developers on Midnight.',
+    tags: ['Grant', 'DAO', 'Shielded'],
   },
 ];
 
-const categories = ['All', 'Climate', 'Gaming', 'Health', 'Community'];
+export const CrowdfundingExperience: React.FC<CrowdfundingExperienceProps> = ({ wallet }) => {
+  const theme = useTheme();
+  const [campaigns, setCampaigns] = useState<Campaign[]>(INITIAL_CAMPAIGNS);
+  const [pledgeOpen, setPledgeOpen] = useState(false);
+  const [activePledgeCampaign, setActivePledgeCampaign] = useState<Campaign | null>(null);
+  const [pledgeAmount, setPledgeAmount] = useState('50');
 
-export const CrowdfundingExperience: React.FC<CrowdfundingExperienceProps> = ({ wallet, onConnectWallet }) => {
-  const [campaigns, setCampaigns] = useState(initialCampaigns);
-  const [selectedCategory, setSelectedCategory] = useState('All');
   const [form, setForm] = useState({
     title: '',
     creator: '',
-    goal: '',
+    goal: '1000',
+    category: 'Infrastructure',
     description: '',
-    category: 'Community',
   });
-  const [supportMessage, setSupportMessage] = useState<string | null>(null);
 
-  const filteredCampaigns = useMemo(() => {
-    if (selectedCategory === 'All') {
-      return campaigns;
-    }
-
-    return campaigns.filter((campaign) => campaign.category === selectedCategory);
-  }, [campaigns, selectedCategory]);
-
-  const totalRaised = campaigns.reduce((sum, campaign) => sum + campaign.raised, 0);
-  const totalGoal = campaigns.reduce((sum, campaign) => sum + campaign.goal, 0);
-  const totalBackers = campaigns.reduce((sum, campaign) => sum + campaign.backers, 0);
-  const progress = Math.min((totalRaised / totalGoal) * 100, 100);
-
-  const scrollToSection = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const handleOpenPledge = (campaign: Campaign) => {
+    setActivePledgeCampaign(campaign);
+    setPledgeOpen(true);
   };
 
-  const handleCreateCampaign = (event: React.FormEvent) => {
-    event.preventDefault();
-
-    if (!wallet.connected) {
-      setSupportMessage('Connect your 1AM wallet to publish a campaign.');
-      return;
-    }
-
-    if (!form.title || !form.creator || !form.goal || !form.description) {
-      return;
-    }
-
-    const goalValue = Number(form.goal);
-    if (Number.isNaN(goalValue) || goalValue <= 0) {
-      setSupportMessage('Enter a valid funding goal.');
-      return;
-    }
-
-    const nextCampaign: Campaign = {
-      id: `${form.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
-      title: form.title,
-      creator: form.creator,
-      description: form.description,
-      raised: 0,
-      goal: goalValue,
-      backers: 0,
-      category: form.category,
-      accent: 'linear-gradient(135deg, #6b7f4f 0%, #a7b97e 100%)',
-    };
-
-    setCampaigns((current) => [nextCampaign, ...current]);
-    setForm({ title: '', creator: '', goal: '', description: '', category: 'Community' });
-    setSelectedCategory('All');
-    setSupportMessage(`Campaign published with 1AM wallet from ${wallet.address}.`);
-  };
-
-  const handleBackCampaign = (campaignId: string) => {
-    if (!wallet.connected) {
-      setSupportMessage('Connect your 1AM wallet to back a campaign.');
-      return;
-    }
-
-    setCampaigns((current) =>
-      current.map((campaign) =>
-        campaign.id === campaignId
-          ? { ...campaign, raised: campaign.raised + 2500, backers: campaign.backers + 1 }
-          : campaign,
+  const handleConfirmPledge = () => {
+    if (!activePledgeCampaign) return;
+    const numericPledge = parseFloat(pledgeAmount) || 0;
+    setCampaigns((prev) =>
+      prev.map((c) =>
+        c.id === activePledgeCampaign.id
+          ? { ...c, raised: c.raised + numericPledge, backers: c.backers + 1 }
+          : c,
       ),
     );
-    setSupportMessage(`Contribution sent from ${wallet.address}.`);
+    setPledgeOpen(false);
+  };
+
+  const handleCreateCampaign = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.title || !form.creator || !form.description) return;
+    const newCamp: Campaign = {
+      id: String(Date.now()),
+      title: form.title,
+      creator: form.creator,
+      goal: parseFloat(form.goal) || 1000,
+      raised: 0,
+      backers: 0,
+      category: form.category || 'General',
+      description: form.description,
+      tags: ['Midnight', 'ZK'],
+    };
+    setCampaigns([newCamp, ...campaigns]);
+    setForm({ title: '', creator: '', goal: '1000', category: 'Infrastructure', description: '' });
   };
 
   return (
-    <Container maxWidth="xl" sx={{ py: { xs: 3, md: 5 } }}>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <Paper
-          elevation={0}
-          sx={{
-            p: { xs: 3, md: 5 },
-            borderRadius: 4,
-            background: 'linear-gradient(135deg, rgba(68,53,35,0.98) 0%, rgba(111,90,61,0.96) 100%)',
-            border: '1px solid rgba(214,194,162,0.24)',
-            overflow: 'hidden',
-            position: 'relative',
-          }}
-        >
-          <Box
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              backgroundImage: 'radial-gradient(circle at top right, rgba(255,248,235,0.22) 0%, transparent 40%)',
-              pointerEvents: 'none',
-            }}
-          />
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, gap: 4, alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box sx={{ flex: 1, maxWidth: 660, position: 'relative', zIndex: 1 }}>
-              <Chip label="1AM wallet ready • live crowdfunding" color="secondary" sx={{ mb: 2 }} />
-              <Typography variant="h2" sx={{ fontWeight: 800, lineHeight: 1.05, mb: 2, color: '#fff8eb' }}>
-                Launch your next community-backed idea.
-              </Typography>
-              <Typography variant="h6" sx={{ mb: 3, color: 'rgba(247,231,204,0.92)', maxWidth: 620, lineHeight: 1.6 }}>
-                Turn bold launches into momentum with transparent goals, instant support, and a wallet-native experience built for modern founders.
-              </Typography>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }}>
-                <Button variant="contained" size="large" sx={{ px: 3, py: 1.2 }} onClick={() => scrollToSection('campaigns')}>
-                  Explore campaigns
-                </Button>
-                <Button variant="outlined" size="large" sx={{ px: 3, py: 1.2, color: '#fff8eb', borderColor: 'rgba(247,231,204,0.45)' }} onClick={() => scrollToSection('launch')}>
-                  Launch a campaign
-                </Button>
-              </Stack>
-              <Alert severity={wallet.connected ? 'success' : 'info'} sx={{ maxWidth: 560, bgcolor: 'rgba(255,248,235,0.92)', color: '#3e3122' }}>
-                {wallet.connected ? `Connected to 1AM • ${wallet.address}` : 'Connect your 1AM wallet to unlock backing and publishing.'}
-              </Alert>
-              {supportMessage ? (
-                <Typography sx={{ mt: 2, color: '#f7e7cc', fontWeight: 600 }}>
-                  {supportMessage}
-                </Typography>
-              ) : null}
-            </Box>
-            <Paper
-              elevation={0}
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      {/* Hero Header Banner */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 4, md: 5 },
+          borderRadius: '24px',
+          background:
+            theme.palette.mode === 'dark'
+              ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(14, 165, 233, 0.08) 100%)'
+              : 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(14, 165, 233, 0.05) 100%)',
+          border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        <Stack spacing={2} sx={{ maxWidth: 700, position: 'relative', zIndex: 1 }}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            <Chip
+              icon={<ShieldMoonIcon sx={{ fontSize: 16 }} />}
+              label="Zero-Knowledge Powered"
+              size="small"
               sx={{
-                flex: 0.82,
-                minWidth: { xs: '100%', md: 320 },
-                p: 3,
-                borderRadius: 3,
-                background: 'rgba(248,240,224,0.14)',
-                border: '1px solid rgba(248,240,224,0.16)',
-                position: 'relative',
-                zIndex: 1,
+                fontWeight: 700,
+                backgroundColor: alpha(theme.palette.primary.main, 0.15),
+                color: theme.palette.primary.light,
               }}
-            >
-              <Stack spacing={2}>
-                <Typography variant="overline" sx={{ color: 'rgba(248,240,224,0.86)', letterSpacing: '0.24em' }}>
-                  Community momentum
-                </Typography>
-                <Typography variant="h3" sx={{ fontWeight: 700, color: '#fff8eb' }}>
-                  ${totalRaised.toLocaleString()}
-                </Typography>
-                <Typography sx={{ color: 'rgba(248,240,224,0.9)' }}>raised across {campaigns.length} live campaigns</Typography>
-                <LinearProgress variant="determinate" value={progress} sx={{ height: 10, borderRadius: 999, backgroundColor: 'rgba(248,240,224,0.16)' }} />
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', color: 'rgba(248,240,224,0.92)', fontWeight: 600 }}>
-                  <span>{Math.round(progress)}% funded</span>
-                  <span>{totalBackers} backers</span>
-                </Box>
-                <Button variant="contained" sx={{ alignSelf: 'flex-start', px: 2.2 }} onClick={onConnectWallet}>
-                  {wallet.connected ? 'Wallet active' : 'Connect 1AM'}
-                </Button>
-              </Stack>
-            </Paper>
+            />
+            <Chip
+              icon={<BoltIcon sx={{ fontSize: 16 }} />}
+              label="Midnight 1AM Proving"
+              size="small"
+              variant="outlined"
+              sx={{ fontWeight: 700 }}
+            />
+          </Stack>
+
+          <Typography variant="h3" sx={{ fontWeight: 800, color: theme.palette.text.primary, letterSpacing: '-0.025em' }}>
+            Privacy-First On-Chain State Board
+          </Typography>
+
+          <Typography variant="body1" sx={{ color: theme.palette.text.secondary, fontSize: '1.05rem', lineHeight: 1.6 }}>
+            Publish encrypted zero-knowledge states, back community initiatives, and inspect verifiable on-chain ledger records seamlessly.
+          </Typography>
+        </Stack>
+      </Paper>
+
+      {/* Main Interactive Grid */}
+      <Grid container spacing={4}>
+        {/* Left Column: Midnight ZK Smart Contract State */}
+        <Grid size={{ xs: 12, lg: 7 }}>
+          <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: theme.palette.text.primary }}>
+              Smart Contract State
+            </Typography>
+            <Chip label="Live Proofs" size="small" color="success" sx={{ fontWeight: 700 }} />
           </Box>
-        </Paper>
 
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' } }}>
-          {[
-            { label: 'Funding goal', value: `$${totalGoal.toLocaleString()}` },
-            { label: 'Active backers', value: `${totalBackers}` },
-            { label: 'Avg. campaign velocity', value: '18%/week' },
-          ].map((stat) => (
-            <Paper key={stat.label} elevation={0} sx={{ p: 2.5, borderRadius: 3, background: 'rgba(90,70,46,0.92)', border: '1px solid rgba(214,194,162,0.22)', boxShadow: '0 10px 24px rgba(67,49,29,0.22)' }}>
-              <Typography variant="overline" sx={{ color: 'rgba(248,240,224,0.82)', letterSpacing: '0.2em' }}>
-                {stat.label}
-              </Typography>
-              <Typography variant="h5" sx={{ mt: 0.5, fontWeight: 700, color: '#fff8eb' }}>
-                {stat.value}
-              </Typography>
-            </Paper>
-          ))}
-        </Box>
+          <Board />
+        </Grid>
 
-        <Box id="campaigns" sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, gap: 3 }}>
-          <Box sx={{ flex: 1.7 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h5" sx={{ fontWeight: 700, color: '#3f3528' }}>
-                Featured campaigns
+        {/* Right Column: Launch Campaign Form */}
+        <Grid size={{ xs: 12, lg: 5 }}>
+          <Paper
+            elevation={0}
+            sx={{
+              p: 3.5,
+              borderRadius: '24px',
+              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(17, 24, 39, 0.65)' : 'rgba(255, 255, 255, 0.85)',
+              backdropFilter: 'blur(20px)',
+              border: `1px solid ${theme.palette.divider}`,
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+            }}
+          >
+            <Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <RocketLaunchIcon sx={{ color: theme.palette.primary.main, fontSize: 22 }} />
+                <Typography variant="h6" sx={{ fontWeight: 800, color: theme.palette.text.primary }}>
+                  Launch Initiative
+                </Typography>
+              </Box>
+              <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mb: 3 }}>
+                Publish a campaign onto Midnight Network backed by client-side zero-knowledge proofs.
               </Typography>
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                {categories.map((category) => (
-                  <Chip
-                    key={category}
-                    label={category}
-                    clickable
-                    color={selectedCategory === category ? 'primary' : 'default'}
-                    onClick={() => setSelectedCategory(category)}
-                  />
-                ))}
+
+              <Box component="form" onSubmit={handleCreateCampaign} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <TextField
+                  label="Campaign Title"
+                  value={form.title}
+                  onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))}
+                  required
+                  fullWidth
+                  size="small"
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                />
+                <TextField
+                  label="Creator Name"
+                  value={form.creator}
+                  onChange={(e) => setForm((c) => ({ ...c, creator: e.target.value }))}
+                  required
+                  fullWidth
+                  size="small"
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                />
+                <TextField
+                  label="Target Goal ($)"
+                  type="number"
+                  value={form.goal}
+                  onChange={(e) => setForm((c) => ({ ...c, goal: e.target.value }))}
+                  required
+                  fullWidth
+                  size="small"
+                  slotProps={{ input: { startAdornment: <InputAdornment position="start">$</InputAdornment> } }}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                />
+                <TextField
+                  label="Story / Details"
+                  multiline
+                  minRows={3}
+                  value={form.description}
+                  onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))}
+                  required
+                  fullWidth
+                  size="small"
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                />
+
+                <Button
+                  type="submit"
+                  variant="contained"
+                  size="large"
+                  sx={{
+                    mt: 1,
+                    borderRadius: '12px',
+                    py: 1.2,
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
+                    boxShadow: '0 4px 16px rgba(99, 102, 241, 0.3)',
+                  }}
+                >
+                  Publish Initiative
+                </Button>
               </Box>
             </Box>
 
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-              {filteredCampaigns.map((campaign) => {
-                const percentage = Math.min((campaign.raised / campaign.goal) * 100, 100);
-                return (
-                  <Card
-                    key={campaign.id}
-                    elevation={0}
-                    sx={{ borderRadius: 3, overflow: 'hidden', background: 'rgba(255,250,242,0.98)', color: '#3f3528', border: '1px solid rgba(132,108,77,0.2)', boxShadow: '0 18px 40px rgba(72,55,34,0.12)' }}
-                  >
-                    <Box sx={{ height: 6, background: campaign.accent }} />
-                    <CardContent>
-                      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, justifyContent: 'space-between' }}>
-                        <Box>
-                          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 1 }}>
-                            <Chip label={campaign.category} size="small" />
-                            <Typography variant="body2" sx={{ color: '#6f5a3a', fontWeight: 600 }}>
-                              by {campaign.creator}
-                            </Typography>
-                          </Box>
-                          <Typography variant="h6" sx={{ fontWeight: 700, color: '#2f2419' }}>
-                            {campaign.title}
-                          </Typography>
-                          <Typography sx={{ mt: 1, color: '#5d4b35', lineHeight: 1.6 }}>
-                            {campaign.description}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ minWidth: { sm: 220 } }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                            <Typography variant="body2" sx={{ color: '#5d4b35', fontWeight: 600 }}>Raised</Typography>
-                            <Typography variant="body2" sx={{ fontWeight: 700, color: '#2f2419' }}>
-                              ${campaign.raised.toLocaleString()} / ${campaign.goal.toLocaleString()}
-                            </Typography>
-                          </Box>
-                          <LinearProgress variant="determinate" value={percentage} sx={{ height: 10, borderRadius: 999, backgroundColor: 'rgba(95,74,46,0.1)' }} />
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1, color: '#6f5a3a', fontWeight: 600 }}>
-                            <span>{Math.round(percentage)}% funded</span>
-                            <span>{campaign.backers} backers</span>
-                          </Box>
-                          <Button variant="contained" size="small" sx={{ mt: 1.5, borderRadius: 999, px: 1.6, bgcolor: '#6b7f4f' }} onClick={() => handleBackCampaign(campaign.id)} aria-label={`Back campaign ${campaign.title}`}>
-                            Back campaign
-                          </Button>
-                        </Box>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </Box>
-          </Box>
-
-          <Paper id="launch" elevation={0} sx={{ flex: 0.9, p: 3, borderRadius: 3, background: 'rgba(248,240,224,0.14)', border: '1px solid rgba(214,194,162,0.16)' }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#3f3528' }}>
-              Launch a campaign
-            </Typography>
-            <Typography sx={{ mb: 3, color: '#f6ebdb', lineHeight: 1.6 }}>
-              Create a new fundraising experience with a polished story, transparent target, and community-powered momentum.
-            </Typography>
-            <Box component="form" onSubmit={handleCreateCampaign} sx={{ display: 'grid', gap: 2 }}>
-              <TextField label="Campaign title" value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} required />
-              <TextField label="Creator" value={form.creator} onChange={(event) => setForm((current) => ({ ...current, creator: event.target.value }))} required />
-              <TextField label="Funding goal" type="number" value={form.goal} onChange={(event) => setForm((current) => ({ ...current, goal: event.target.value }))} required />
-              <TextField label="Category" value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))} />
-              <TextField label="Story" multiline minRows={4} value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} required />
-              <Button type="submit" variant="contained" size="large">
-                Publish campaign
-              </Button>
-              {!wallet.connected ? (
-                <Typography variant="body2" sx={{ color: '#fff8eb', fontWeight: 600 }}>
-                  Connect 1AM to unlock publishing.
-                </Typography>
-              ) : null}
-            </Box>
+            {!wallet.connected && (
+              <Typography variant="caption" sx={{ color: theme.palette.text.secondary, textAlign: 'center', mt: 2, display: 'block' }}>
+                <LockIcon sx={{ fontSize: 12, verticalAlign: 'middle', mr: 0.5 }} />
+                Connect 1AM extension to verify contract actions.
+              </Typography>
+            )}
           </Paper>
-        </Box>
+        </Grid>
+      </Grid>
 
-        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, background: 'rgba(248,240,224,0.1)', border: '1px solid rgba(214,194,162,0.14)' }}>
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: '#fff8eb' }}>
-                Why founders love CrowdRise
-              </Typography>
-              <Typography sx={{ mt: 1, color: 'rgba(248,240,224,0.9)', lineHeight: 1.6 }}>
-                Built for fast-moving launches with trust, discoverability, and momentum at the center.
-              </Typography>
-            </Box>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: '#fff8eb' }}>
-                Built for launch day
-              </Typography>
-              <Typography sx={{ mt: 1, color: 'rgba(248,240,224,0.9)', lineHeight: 1.6 }}>
-                Share milestones, reward backers, and keep every contribution visible from day one.
-              </Typography>
-            </Box>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: '#fff8eb' }}>
-                Ready for the next wave
-              </Typography>
-              <Typography sx={{ mt: 1, color: 'rgba(248,240,224,0.9)', lineHeight: 1.6 }}>
-                Designed to scale beautifully from a single product launch to a global community campaign.
-              </Typography>
-            </Box>
-          </Box>
-        </Paper>
+      {/* Active Initiatives Showcase */}
+      <Box sx={{ mt: 2 }}>
+        <Typography variant="h6" sx={{ fontWeight: 800, mb: 2.5, color: theme.palette.text.primary }}>
+          Featured ZK Campaigns
+        </Typography>
+
+        <Grid container spacing={3}>
+          {campaigns.map((camp) => (
+            <Grid key={camp.id} size={{ xs: 12, md: 6 }}>
+              <Card elevation={0}>
+                <CardContent sx={{ p: 3 }}>
+                  <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                    <Box>
+                      <Chip label={camp.category} size="small" sx={{ fontWeight: 700, mb: 1, height: 22, fontSize: '0.7rem' }} />
+                      <Typography variant="h6" sx={{ fontWeight: 800, fontSize: '1.1rem' }}>
+                        {camp.title}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
+                        by {camp.creator}
+                      </Typography>
+                    </Box>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => handleOpenPledge(camp)}
+                      sx={{ borderRadius: '10px', fontWeight: 700, px: 2, whiteSpace: 'nowrap' }}
+                    >
+                      Pledge
+                    </Button>
+                  </Stack>
+
+                  <Typography variant="body2" sx={{ color: theme.palette.text.secondary, mb: 2.5, lineHeight: 1.6 }}>
+                    {camp.description}
+                  </Typography>
+
+                  <Stack direction="row" spacing={3} sx={{ pt: 1, borderTop: `1px solid ${theme.palette.divider}` }}>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: theme.palette.text.secondary, display: 'block' }}>
+                        Raised
+                      </Typography>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: theme.palette.primary.main }}>
+                        ${camp.raised.toLocaleString()} / ${camp.goal.toLocaleString()}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: theme.palette.text.secondary, display: 'block' }}>
+                        Backers
+                      </Typography>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+                        {camp.backers}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
       </Box>
-    </Container>
+
+      {/* Back Campaign Modal Dialog */}
+      <Dialog
+        open={pledgeOpen}
+        onClose={() => setPledgeOpen(false)}
+        slotProps={{ paper: { style: { borderRadius: 20, padding: 8 } } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          Pledge to {activePledgeCampaign?.title}
+          <IconButton onClick={() => setPledgeOpen(false)}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
+            Back this initiative securely via Midnight Network using Zero-Knowledge state proofs.
+          </Typography>
+          <TextField
+            label="Contribution Amount"
+            type="number"
+            value={pledgeAmount}
+            onChange={(e) => setPledgeAmount(e.target.value)}
+            fullWidth
+            slotProps={{ input: { startAdornment: <InputAdornment position="start">$</InputAdornment> } }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 0 }}>
+          <Button onClick={() => setPledgeOpen(false)} color="inherit">
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmPledge}
+            sx={{
+              borderRadius: '10px',
+              px: 3,
+              fontWeight: 700,
+            }}
+          >
+            Confirm Pledge
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 };

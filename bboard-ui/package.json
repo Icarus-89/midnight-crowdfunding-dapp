@@ -11,12 +11,13 @@
     "build:start": "npm run build && npm run start",
     "build:start:preview": "npm run build:preview && npm run start",
     "ci": "npm run typecheck && npm run lint",
-    "dev": "vite",
+    "dev": "npm run predev && vite",
     "lint": "eslint ./src",
     "start": "http-server --port 0 ./dist",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "preview": "vite preview",
-    "prepack": "yarn build"
+    "prepack": "yarn build",
+    "predev": "mkdir -p ./public && cp -r ../contract/src/managed/bboard/keys ./public/keys && cp -r ../contract/src/managed/bboard/zkir ./public/zkir"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
