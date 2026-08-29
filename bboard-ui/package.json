@@ -36,7 +36,7 @@
     "@testing-library/react": "^16.3.2",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "@vitejs/plugin-react": "^6.0.2",
+    "@vitejs/plugin-react": "^6.1.0",
     "eslint-plugin-react": "^7.37.5",
     "jsdom": "^30.0.1",
     "vite-plugin-node-polyfills": "^0.28.0"
